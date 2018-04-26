@@ -1,0 +1,69 @@
+---
+title: "How Big is a Big Fire?"
+author: "Adam Mahood"
+output: pdf_document
+bibliography: refs.bib
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warnings = FALSE)
+
+# libs <- c("sf", "tidyverse", "extRemes", "Rmisc")
+# lapply(libs, library, character.only = TRUE, verbose = FALSE)
+
+```
+
+# Introduction
+
+Today extreme events associated with/due to global change are increasing in frequency [@Dennison2014] and magnitude, which is causing an increasing amount of societal [@Smith2013] and ecological harm [@Scheffer2001a]. Therefore, it is becoming increasingly important to develop methods to model and predict the frequency and magnitude of these events. But this is impossible without first appropriately characterizing what an extreme event actually is. The starting point is to explicitly define the event or family of events of interest. For example: an extreme event is an episode or occurrence in which a statistically rare or unusual climatic period alters ecosystem/community structure and⁄or function well outside the bounds of what is considered typical or normal variability [adapted from @Smith2011a]. 
+
+Next, then, is how to actually set a quantitative threshold for the variable of interest that can be used to separated extreme events from the rest that is ecologically or societally meaningful. Defining such a threshold can follow two general approaches. The first approach is to use some type of biophysically meaningful threshold, e.g. a flood being defined as when the water level rises above the inactive flood plane. The second approach is to use statistics, for example, defining a flood as an event with a flow rate the exceeds a certain return interval, for example.
+
+Here we are going to look at fire size as an example where extreme value theory can be extremely useful. There is not a simple biophysical threshold of fire size that would be equivalent to the example of rising above a certain water height like in flooding. In addition, different ecosystems have different relationships with fire. Cool, wet ecosystems like lodgepole pine burn infrequently, but when they do burn the fires are large and severe. In contrast, systems like sagebrush are characterized by infrequent, small fires. Therefore, calculating what constitutes a large fire must take geographical variation into account. 
+
+We can use extreme value statistical methods to calculate thresholds and return intervals that are more statistically valid than other approaches, and calculate at different scales to see how these approximations change as we split the data further and further and into more specific geographies of place. Here, we will use extreme value mixture models to define thresholds at four scales: the coterminous U.S., and epa ecoregion levels 1-3. Then we will perform something of a thought experiment, using block maxima method to calculate the return interval of a one million acre fire in each ecoregion and for the coterminous U.S.
+
+
+# Methods
+
+*Data*
+
+We used fire data from the Monitoring Trends in Burn Severity Project [@Eidenshink2007]. This dataset documents fires over 250 acres in the eastern U.S. and over 500 acres in the western U.S. from 1984 to 2015 using landsat imagery and contains just under 20,000 records.
+
+We used ecoregions provided by the center for environmental cooperation [@CEC2006]. These are ideal for exploring the influence of scale on our estimates, because ecoregions are arranged in a nested heirarchy, from levels 1 (broadest scale, 10 ecoregions in the coterminous US) to 3 (finest scale, 81 ecoregions in the coterminous US).
+
+*Calculating Thresholds with Extreme Value Mixture Modeling*
+
+Extreme value mixture modeling fits data to a mixed distribution, where most of the data is described by a bulk distribution, and the highest values are described to a type of extreme value distribution. At each scale, we fit an extreme value mixture model and extracted the threshold for each ecoregion using the 'evmix' R package [@Hu2018]. We used weibull distributions for the bulk distributions as these are typically used to describe these distributions [@Johnson1994]. for the tail (i.e. the portiong of the data above the threshold) we used a generalised Pareto distribution (GPD) [@Scarrott2012].
+
+*Calculating Million Acre Return Intervals Using General Extreme Value Models*
+
+There are two genearal methods for calculating return intervals for extreme events. One is the block maxima method, where for a given time period you take the highest recorded value at intervals throughout the period, (in this case the largest fire in each year in a 32 year period), and then build a model based on a generalized extreme value distribution. The other method is a peaks over threshold method, which uses generalized pareto distributions.
+
+Here, we use the former to calculate million acre return intervals. We first calculated block maxima for each ecoregion at each scale. We fitted at generlized extreme value model to the data using the 'extRemes' R package [@Gilleland2016], and calculated the value of the cumulative distribution function at 1 million (CDF1M), from which we calculated the million year return interval using the equation 1/(1-CDF1M). All analysis was carried out in R [@R2018]. Any ecoregion with less than 10 years from which to calculate a block maxima was viewed as having insufficient data and recorded as an NA.
+
+
+# Results
+
+*Extreme Fire Thresholds*
+
+Threshods for extreme fires ranged from 2,037 to 53,337 acres across all scales. Thresholds for level 1 ecoregions ranged from 3,870 to 25,680 acres, level 2 from 3,165 to 25,680, and level 3 from 2,037 to 53,337. The coterminus U.S. had a threshold of 10,824 acres. There was a general pattern of lower thresholds in the eastern U.S., and the highest thresholds were in the colder, wetter forests in the northwestern U.S.
+
+*Million Acre Return Intervals*
+
+The million acre return interval for the coterminous U.S. was 21 years. Return intervals for Level 1 ecoregions ranged from 17 to 333 years, level 2 from 14 to 6 million years, level 3 11 years to infinity. There was a general pattern of higher return intervals in the eastern U.S., and the lowest return intervals scattered around the western U.S., particularly in the Great Basin, pacific northwest and on the west side of the Mississippi River.
+
+![Threshold approximations from extreme value mixture models with weibull bulk distributions and generalised pareto distributions for the tails. Grey = insufficient data.](th.png)
+
+![Million acre fire return intervals as calculated by generalized extreme value models. Grey = insufficient data.](ri.png)
+
+# Discussion
+
+We found that fire return intervals and extreme fire thresholds followed similar patterns. Smaller fires in the east in general led to lower extreme thresholds with lower frequencies of large fires. This validates the practice of MTBS using a lower threshold of 250 acres for fires in the east. The extreme threshold of 10,824 acres also validates the commonly used arbitrary threshold of 10,000 acres by which many studies have classified large or extreme fires. However, this also shows that the broad usage of such a threshold will lead to analyses that overlook fires that ought to be considered extreme in some areas, and leads to the opposite effect in other areas, like in the Cascade Mountains. 
+
+There were many ecoregions that did not have sufficient data to carry out even a minimal analysis, especially at the level 3 scale. This could be remedied by the use of a data set with more observations, for example the Spatial Wildfire Occurrence dataset [@Short2015], or a derivative of the MODIS Burned Area Product [@Giglio2009], or the Burned Area Essential Climate Variable product [@Hawbaker2015a].
+
+One extension that could be made with this line of investigation would be to use the thresholds calculated above to calculate points over threshold return intervals that use general pareto distributions, yeilding a return interval of extreme fires. 
+
+# Literature Cited
