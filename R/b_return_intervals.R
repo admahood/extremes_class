@@ -205,7 +205,7 @@ mp <- annotate_figure(mp,
 
 
 ggsave(plot = mp,
-       filename = "ri.png",
+       filename = "data/ri.png",
        limitsize = FALSE,
        width = 4.5,
        height = 6.5)

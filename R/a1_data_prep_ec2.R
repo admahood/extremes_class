@@ -37,6 +37,7 @@ unzip(ecol3_zip, exdir = "data/")
 }
 
 # data import -------------------------------------------------------------
+system("aws s3 sync s3://earthlab-amahood/extremes/fpa_w_ecoregions.gpkg data/fpa_w_ecoregions.gpkg")
 
 if(!file.exists(fpa_joined)){
   fpa <- st_read(fpa_gdb)
@@ -47,6 +48,8 @@ if(!file.exists(fpa_joined)){
   # joined <- st_intersection(fpa,ecoregions) #takes long time
   joined <- st_par(fpa, st_intersection, detectCores(), y=ecoregions)
   st_write(joined, fpa_joined)
+  system("aws s3 cp data/fpa_w_ecoregions.gpkg s3://earthlab-amahood/extremes/fpa_w_ecoregions.gpkg")
 }
 if(file.exists(fpa_joined)){joined <- st_read(fpa_joined)}
+
 
