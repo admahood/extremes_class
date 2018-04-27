@@ -183,3 +183,5 @@ ggsave(plot = mp,
        limitsize = FALSE,
        width = 4.5,
        height = 6.5)
+
+system("aws s3 cp data/th.png s3://earthlab-admahood/extremes/th.png")
