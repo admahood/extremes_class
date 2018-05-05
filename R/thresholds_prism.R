@@ -76,6 +76,11 @@ plot(eco_1_[3])
 plot(eco_2_[3])
 plot(eco_3_[3])
 
+dir.create("results_tosave")
+st_write(eco_1_, "results_tosave/ppt_L1.gpkg")
+st_write(eco_2_, "results_tosave/ppt_L2.gpkg")
+st_write(eco_3_, "results_tosave/ppt_L3.gpkg")
+
 p1 <- ggplot(eco_1, aes(fill = Th)) +
   geom_sf(lwd=0.25) +
   theme_void() +
