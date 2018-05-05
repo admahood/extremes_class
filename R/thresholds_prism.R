@@ -81,7 +81,7 @@ st_write(eco_1_, "results_tosave/ppt_L1.gpkg")
 st_write(eco_2_, "results_tosave/ppt_L2.gpkg")
 st_write(eco_3_, "results_tosave/ppt_L3.gpkg")
 
-p1 <- ggplot(eco_1, aes(fill = Th)) +
+p1 <- ggplot(eco_1_, aes(fill = Th)) +
   geom_sf(lwd=0.25) +
   theme_void() +
   ggtitle("      Level 1 Ecoregions") 
