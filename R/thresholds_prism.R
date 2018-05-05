@@ -17,7 +17,8 @@ ecos[[3]] <- unique(as.character(ecoregions$NA_L3NAME))
 eco_res <- list()
 eco_1 <- ecoregions %>%
   dplyr::group_by(NA_L1NAME) %>%
-  dplyr::summarise(NA_L1CODE = mean(as.numeric(NA_L1CODE)))
+  dplyr::summarise(NA_L1CODE = mean(as.numeric(NA_L1CODE))) %>%
+  st_simplify()
 
 eco_res[[1]] <- raster::extract(prism_bils, eco_1, df = T)
 for(i in 1:length(ecos[[1]])){
@@ -66,4 +67,56 @@ for(i in 1:length(ecos)){
   }
 }
 
+# plotting ---------------------------------------------------------------------
+
+eco_1_ <- left_join(eco_1,result[[1]], by= c("NA_L1NAME" = "eco_name"))
+eco_2_ <- left_join(eco_2,result[[2]], by= c("NA_L2NAME" = "eco_name"))
+eco_3_ <- left_join(eco_3,result[[3]], by= c("NA_L3NAME" = "eco_name"))
+plot(eco_1_[3])
+plot(eco_2_[3])
+plot(eco_3_[3])
+
+p1 <- ggplot(eco_1, aes(fill = Th)) +
+  geom_sf(lwd=0.25) +
+  theme_void() +
+  ggtitle("      Level 1 Ecoregions") 
+
+p2 <- ggplot(eco_2, aes(fill = Threshold)) +
+  geom_sf(lwd=0.25) +
+  theme_void() +
+  ggtitle("      Level 2 Ecoregions")  + 
+  scale_fill_manual(values = colours, 
+                    na.value='grey',
+                    name = NULL) +
+  theme(panel.grid.major = element_line(colour = 'transparent'))
+
+p3 <- ggplot(eco_3, aes(fill = Threshold)) +
+  geom_sf(lwd=0.25) +
+  theme_void() +
+  ggtitle("      Level 3 Ecoregions")  + 
+  scale_fill_manual(values = colours, 
+                    na.value='grey',
+                    name = NULL) +
+  theme(panel.grid.major = element_line(colour = 'transparent'))
+
+mp <- ggarrange(p1,p2,p3, 
+                ncol = 1,
+                nrow = 3,
+                labels = c("A","B","C"),
+                #common.legend = TRUE,
+                legend = "right")
+mp <- annotate_figure(mp,
+                      top = text_grob("Extreme Fire Thresholds", 
+                                      color = "black", 
+                                      face = "bold", 
+                                      size = 14))
+
+
+ggsave(plot = mp,
+       filename = "data/th.png",
+       limitsize = FALSE,
+       width = 4.5,
+       height = 6.5)
+
+system("aws s3 cp data/th.png s3://earthlab-admahood/extremes/th.png")
 
