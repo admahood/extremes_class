@@ -5,104 +5,72 @@ source("R/a2_data_prep_ec2.R")
 ecoregions <- st_read(ecol3_shp) %>%
   st_simplify()
 
-prism_bils <- prism::prism_stack(prism::ls_prism_data()[,1])
-
-eco_cols <- c("NA_L1NAME","NA_L2NAME","NA_L3NAME")
-
-ecos <- list()
-ecos[[1]] <- unique(as.character(ecoregions$NA_L1NAME))
-ecos[[2]] <- unique(as.character(ecoregions$NA_L2NAME))
-ecos[[3]] <- unique(as.character(ecoregions$NA_L3NAME))
-
-eco_res <- list()
-eco_1 <- ecoregions %>%
-  dplyr::group_by(NA_L1NAME) %>%
-  dplyr::summarise(NA_L1CODE = mean(as.numeric(NA_L1CODE))) %>%
-  st_simplify()
-
-eco_res[[1]] <- raster::extract(prism_bils, eco_1, df = T)
-for(i in 1:length(ecos[[1]])){
-  eco_res[[1]]$ID <- ifelse(eco_res[[1]]$ID == i, ecos[[1]][i], eco_res[[1]]$ID)
-}
-
 eco_2 <- ecoregions %>%
   dplyr::group_by(NA_L2NAME) %>%
   dplyr::summarise(NA_L2CODE = mean(as.numeric(NA_L3CODE)))
 
-eco_res[[2]] <- raster::extract(prism_bils, eco_2, df = T)
-for(i in 1:length(ecos[[2]])){
-  eco_res[[2]]$ID <- ifelse(eco_res[[2]]$ID  == i, ecos[[2]][i], eco_res[[2]]$ID )
-}
+eco_cols <- c("NA_L2NAME")
+ecos <- unique(as.character(ecoregions$NA_L2NAME))
 
-eco_3 <- ecoregions %>%
-  dplyr::group_by(NA_L3NAME) %>%
-  dplyr::summarise(NA_L3CODE = mean(as.numeric(NA_L3CODE)))
-
-eco_res[[3]] <- raster::extract(prism_bils, eco_3, df = T)
-for(i in 1:length(ecos[[3]])){
-  eco_res[[3]]$ID  <- ifelse(eco_res[[3]]$ID == i, ecos[[3]][i], eco_res[[3]]$ID)
-}
-
-
-
-# looping the models ---------------------------------------------------
+eco_res <- list()
+vars <- c("ppt", "tmax", "tmin","vpdmax")
+varnames <- c("Precipitation", "Maximum Temperature", "Minimum Temperature", "Maximum Vapor Pressure Deficit")
+# years <- 1895:2017
 result <- list()
-for(i in 1:length(ecos)){
-  result[[i]] <- data.frame(Th = NA, eco_name = NA, n = NA)
-  
-  for(j in 1:length(ecos[[i]])){
-    subset <- eco_res[[i]][eco_res[[i]]$ID == ecos[[i]][j],]
-    long <- gather(subset, key = "bil_file", value = "ppt",-ID)
-    
+plots <- list()
 
-    model <- fgammagpd(long$ppt, 
+for(v in 1:length(vars)){
+  # prism::get_prism_annual(vars[v], years = years)
+  # prism_bils <- prism::prism_stack(prism::ls_prism_data()[,1])
+  system(paste0("aws s3 sync s3://earthlab-amahood/climate/",
+                vars[v],
+                " data/prism/", vars[v]
+               ))
+  prism_files <- Sys.glob(paste0("data/prism/",vars[v],"/*06_bil.bil"))
+  
+  
+  prism_stk <- raster::stack(prism_files)
+  eco_res[[v]] <- raster::extract(prism_stk, eco_2, df = T)
+  
+  #system(paste0("rm -r data/prism/",vars[v]))
+  
+  for(i in 1:length(ecos)){
+    eco_res[[v]]$ID <- ifelse(eco_res[[v]]$ID  == i, ecos[i], eco_res[[v]]$ID )
+  }
+
+  result[[v]] <- data.frame(Th = NA, eco_name = NA)
+  
+  for(j in 1:length(ecos)){
+    subset <- eco_res[[v]][eco_res[[v]]$ID == ecos[j],]
+    long <- tidyr::gather(subset, key = "bil_file", value = "value",-ID)
+    
+  
+    model <- fgammagpd(long$value, 
                          phiu = FALSE, 
                          std.err = FALSE, 
                          control = list(maxit = 100000))
     
-    result[[i]][j,1] <- round(model$u)
-    result[[i]][j,2] <- as.character(ecos[[i]][j])
-    result[[i]][j,3] <- length(subset$ppt)
-    
+    result[[v]][j,1] <- round(model$u)
+    result[[v]][j,2] <- as.character(ecos[j])
   }
+  system(paste0("rm -r data/prism/",vars[v]))
+  
+  eco_2_ <- dplyr::left_join(eco_2, result[[v]], by= c("NA_L2NAME" = "eco_name"))
+  # plot(eco_2_[3])
+  
+  dir.create("results_tosave")
+  st_write(eco_2_, paste0("results_tosave/",vars[v],"_L2.gpkg"), delete_layer = TRUE)
+  
+  plots[[v]] <- ggplot2::ggplot(eco_2_, aes(fill = Th)) +
+    geom_sf(lwd=0.25) +
+    theme_void() +
+    ggtitle(paste(varnames[v], "Level 2 Ecoregions")) +
+    scale_fill_viridis()
+
+  gc()
 }
 
 # plotting ---------------------------------------------------------------------
-
-eco_1_ <- left_join(eco_1,result[[1]], by= c("NA_L1NAME" = "eco_name"))
-eco_2_ <- left_join(eco_2,result[[2]], by= c("NA_L2NAME" = "eco_name"))
-eco_3_ <- left_join(eco_3,result[[3]], by= c("NA_L3NAME" = "eco_name"))
-plot(eco_1_[3])
-plot(eco_2_[3])
-plot(eco_3_[3])
-
-dir.create("results_tosave")
-st_write(eco_1_, "results_tosave/ppt_L1.gpkg")
-st_write(eco_2_, "results_tosave/ppt_L2.gpkg")
-st_write(eco_3_, "results_tosave/ppt_L3.gpkg")
-
-p1 <- ggplot(eco_1_, aes(fill = Th)) +
-  geom_sf(lwd=0.25) +
-  theme_void() +
-  ggtitle("      Level 1 Ecoregions") 
-
-p2 <- ggplot(eco_2, aes(fill = Threshold)) +
-  geom_sf(lwd=0.25) +
-  theme_void() +
-  ggtitle("      Level 2 Ecoregions")  + 
-  scale_fill_manual(values = colours, 
-                    na.value='grey',
-                    name = NULL) +
-  theme(panel.grid.major = element_line(colour = 'transparent'))
-
-p3 <- ggplot(eco_3, aes(fill = Threshold)) +
-  geom_sf(lwd=0.25) +
-  theme_void() +
-  ggtitle("      Level 3 Ecoregions")  + 
-  scale_fill_manual(values = colours, 
-                    na.value='grey',
-                    name = NULL) +
-  theme(panel.grid.major = element_line(colour = 'transparent'))
 
 mp <- ggarrange(p1,p2,p3, 
                 ncol = 1,
@@ -111,7 +79,7 @@ mp <- ggarrange(p1,p2,p3,
                 #common.legend = TRUE,
                 legend = "right")
 mp <- annotate_figure(mp,
-                      top = text_grob("Extreme Fire Thresholds", 
+                      top = text_grob("Extreme Climate Thresholds", 
                                       color = "black", 
                                       face = "bold", 
                                       size = 14))

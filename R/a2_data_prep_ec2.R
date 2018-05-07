@@ -1,6 +1,11 @@
 # setup ------------------------------------------------------------------------
-install.packages("prism") #package had a corrupted rdb and was really freaking annoying
-libs <- c("sf", "tidyverse", "extRemes", "viridis", "evmix", "ggpubr")
+library(devtools)
+install_github("hadley/rlang", dependencies = TRUE, force = TRUE)
+install_github("tidyverse/ggplot2",force=TRUE)
+.rs.restartR()
+
+# install.packages("prism") #package had a corrupted rdb and was really freaking annoying
+libs <- c("sf", "tidyverse", "Hmisc","extRemes", "viridis", "evmix", "ggpubr")
 for(i in libs){if(!require(i, character.only = TRUE)){install.packages(i)}}
 lapply(libs, library, character.only = TRUE, verbose = FALSE)
 
@@ -20,7 +25,6 @@ ecol3_zip <- file.path("data", "us_eco_l3.zip")
 
 # data download ------------------------------------------------------------------
 
-prism::get_prism_annual("ppt", years = 1895:2017)
 
 # 
 # if (!file.exists(fpa_gdb)) {
