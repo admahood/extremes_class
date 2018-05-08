@@ -15,22 +15,22 @@ ecos <- unique(as.character(ecoregions$NA_L2NAME))
 eco_res <- list()
 vars <- c("ppt", "tmax", "tmin","vpdmax")
 varnames <- c("Precipitation", "Maximum Temperature", "Minimum Temperature", "Maximum Vapor Pressure Deficit")
+units <- c("(mm)", "(Degrees C)", "(Degrees C)", "(hPa)")
 # years <- 1895:2017
 result <- list()
 plots <- list()
+set.seed(938475239)
 
-for(v in 1:length(vars)){
+for(v in 4:length(vars)){
   # prism::get_prism_annual(vars[v], years = years)
   # prism_bils <- prism::prism_stack(prism::ls_prism_data()[,1])
   system(paste0("aws s3 sync s3://earthlab-amahood/climate/",
                 vars[v],
                 " data/prism/", vars[v]
                ))
-  prism_files <- Sys.glob(paste0("data/prism/",vars[v],"/*06_bil.bil"))
-  
-  
-  prism_stk <- raster::stack(prism_files)
-  eco_res[[v]] <- raster::extract(prism_stk, eco_2, df = T)
+  prism_files <- Sys.glob(paste0("data/prism/",vars[v],"/*bil.bil"))
+  prism_stk <- raster::stack(prism_files, quick=T)
+  eco_res[[v]] <- raster::extract(prism_stk, st_point_on_surface(eco_2), df = T)
   
   #system(paste0("rm -r data/prism/",vars[v]))
   
@@ -64,7 +64,7 @@ for(v in 1:length(vars)){
   plots[[v]] <- ggplot2::ggplot(eco_2_, aes(fill = Th)) +
     geom_sf(lwd=0.25) +
     theme_void() +
-    ggtitle(paste(varnames[v], "Level 2 Ecoregions")) +
+    ggtitle(paste(varnames[v], units[v])) +
     scale_fill_viridis()
 
   gc()
@@ -72,10 +72,10 @@ for(v in 1:length(vars)){
 
 # plotting ---------------------------------------------------------------------
 
-mp <- ggarrange(p1,p2,p3, 
-                ncol = 1,
-                nrow = 3,
-                labels = c("A","B","C"),
+mp <- ggarrange(plots[[1]], plots[[2]],plots[[3]],plots[[4]],
+                ncol = 2,
+                nrow = 2,
+                labels = c("A","B","C","D"),
                 #common.legend = TRUE,
                 legend = "right")
 mp <- annotate_figure(mp,
@@ -83,6 +83,7 @@ mp <- annotate_figure(mp,
                                       color = "black", 
                                       face = "bold", 
                                       size = 14))
+mp
 
 
 ggsave(plot = mp,
